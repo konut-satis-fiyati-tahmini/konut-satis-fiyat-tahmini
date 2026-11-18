@@ -1,0 +1,8 @@
+# Model dosyası (nihai_model.pkl) bu scikit-learn sürümüyle kaydedildi; sürümü değiştirmeyin.
+# Python 3.11 veya daha yenisi gerekir.
+scikit-learn==1.9.1
+numpy
+pandas
+joblib
+matplotlib
+seaborn
