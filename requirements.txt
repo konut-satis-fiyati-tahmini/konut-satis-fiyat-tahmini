@@ -1,0 +1,11 @@
+# Model dosyası (nihai_model.pkl) bu sürümlerle kaydedildi.
+# Farklı bir scikit-learn sürümü model dosyasını açamayabilir; sürümleri değiştirmeyin.
+# Python 3.12 veya 3.13 gerekir (3.11 ve öncesinde bu sürümler kurulamaz).
+scikit-learn==1.9.1
+numpy==2.5.3
+pandas==3.0.5
+scipy==1.18.1
+joblib==1.6.0
+streamlit==1.67.0
+matplotlib==3.11.2
+seaborn==0.13.2
