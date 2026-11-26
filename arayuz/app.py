@@ -1,21 +1,34 @@
 """Konut Fiyatlandırıcı - Lüks Gayrimenkul Değerleme Arayüzü.
 
-Çalıştırmak için (bu dosya, konut_model.py, nihai_model.pkl ve train.csv
-aynı klasörde olmalı):
+Çalıştırmak için (deponun kök klasöründe):
 
     pip install -r requirements.txt
-    python arayuz_varsayilanlar_olustur.py   # sadece ilk seferde
-    streamlit run app.py
+    python arayuz/arayuz_varsayilanlar_olustur.py   # sadece ilk seferde
+    streamlit run arayuz/app.py
+
+Dosya yolları bu dosyanın konumundan hesaplandığı için komut başka bir
+klasörden çalıştırılsa da doğru dosyalar bulunur.
 """
 
 import json
 import os
+import sys
+from pathlib import Path
 
 import joblib
 import pandas as pd
 import streamlit as st
 
-import konut_model  # noqa: F401  (kaydedilen model bu dosyadaki fonksiyonları kullanır)
+# Klasör yolları: bu dosya arayuz/ içinde, kök klasör bir üstte
+ARAYUZ_KLASORU = Path(__file__).resolve().parent
+KOK = ARAYUZ_KLASORU.parent
+sys.path.insert(0, str(KOK / "kaynak"))  # kaydedilen model "konut_model" modülünü arar
+
+MODEL_YOLU = KOK / "modeller" / "nihai_model.pkl"
+VARSAYILAN_YOLU = ARAYUZ_KLASORU / "arayuz_varsayilanlar.json"
+GORSEL = KOK / "gorseller"
+
+import konut_model  # noqa: E402,F401  (kaydedilen model bu dosyadaki fonksiyonları kullanır)
 
 FT2_M2 = 0.092903  # 1 square foot = 0.0929 metrekare
 
@@ -32,41 +45,41 @@ MAHALLELER = {
 }
 KALITE_SECENEKLERI = {"Ex": "Mükemmel", "Gd": "İyi", "TA": "Ortalama", "Fa": "Vasat", "Po": "Kötü"}
 
-# Model İçgörüleri sekmesinde gösterilen, repodaki hazır grafikler
+# Model İçgörüleri sekmesinde gösterilen, gorseller/ klasöründeki hazır grafikler
 ICGORU_GRAFIKLERI = [
-    ("saleprice_dist.png", "Satış fiyatı dağılımı", "Hedef değişken sağa çarpık; bu yüzden model log-dönüşümle eğitildi."),
-    ("h7_model_karsilastirma.png", "Dört modelin 5 katlı çapraz doğrulama hatası ve eğitim süresi",
+    (GORSEL / "hafta3" / "saleprice_dist.png", "Satış fiyatı dağılımı", "Hedef değişken sağa çarpık; bu yüzden model log-dönüşümle eğitildi."),
+    (GORSEL / "hafta7" / "h7_model_karsilastirma.png", "Dört modelin 5 katlı çapraz doğrulama hatası ve eğitim süresi",
      "Ridge (alpha=20) hem en düşük çapraz doğrulama hatasına (log-RMSE = 0,112) hem de en kısa eğitim süresine "
      "(0,06 sn) sahip; bu nedenle nihai model olarak seçildi."),
-    ("h7_gercek_tahmin.png", "Gerçek değer vs. model tahmini", "Noktalar ideal çizgiye (y=x) yakın dağılıyor; büyük hatalar genelde çok yüksek fiyatlı evlerde."),
-    ("h7_ridge_katsayilar.png", "Fiyatı en çok etkileyen özellikler (nihai Ridge modeli)",
+    (GORSEL / "hafta7" / "h7_gercek_tahmin.png", "Gerçek değer vs. model tahmini", "Noktalar ideal çizgiye (y=x) yakın dağılıyor; büyük hatalar genelde çok yüksek fiyatlı evlerde."),
+    (GORSEL / "hafta7" / "h7_ridge_katsayilar.png", "Fiyatı en çok etkileyen özellikler (nihai Ridge modeli)",
      "Genel kalite (OverallQual) fiyatı en çok yukarı çeken özellik; Crawford ve Stone Brook gibi bazı mahalleler "
      "de fiyatı artırıyor. Ticari imarlı bölge (MSZoning_C) ve evin yaşı ise fiyatı en çok aşağı çeken etkenler arasında."),
-    ("heatmap.png", "Sayısal özellikler arası korelasyon", "GrLivArea, OverallQual ve garaj/bodrum alanları fiyatla en yüksek korelasyona sahip."),
+    (GORSEL / "hafta3" / "heatmap.png", "Sayısal özellikler arası korelasyon", "GrLivArea, OverallQual ve garaj/bodrum alanları fiyatla en yüksek korelasyona sahip."),
 ]
 
 
 @st.cache_resource
 def model_yukle():
     try:
-        return joblib.load("nihai_model.pkl")
+        return joblib.load(MODEL_YOLU)
     except Exception as hata:  # çoğunlukla scikit-learn sürüm farkı
         st.error(
             "Model dosyası açılamadı. Büyük olasılıkla model başka bir scikit-learn sürümüyle kaydedildi. "
-            "Çözüm: hafta7_nihai_model.ipynb dosyasını bu bilgisayarda baştan sona çalıştırın; "
-            "nihai_model.pkl yeniden oluşur. Ardından bu sayfayı yenileyin.\n\n"
+            "Çözüm: defterler/hafta7_nihai_model.ipynb dosyasını bu bilgisayarda baştan sona çalıştırın; "
+            "modeller/nihai_model.pkl yeniden oluşur. Ardından bu sayfayı yenileyin.\n\n"
             f"Teknik ayrıntı: {hata}")
         st.stop()
 
 
 @st.cache_data
 def varsayilanlar_yukle():
-    if not os.path.exists("arayuz_varsayilanlar.json"):
+    if not VARSAYILAN_YOLU.exists():
         st.error(
             "'arayuz_varsayilanlar.json' bulunamadı. Önce şu komutu çalıştırın:\n\n"
-            "python arayuz_varsayilanlar_olustur.py")
+            "python arayuz/arayuz_varsayilanlar_olustur.py")
         st.stop()
-    with open("arayuz_varsayilanlar.json", encoding="utf-8") as f:
+    with open(VARSAYILAN_YOLU, encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -675,9 +688,9 @@ with sekme_icgoru:
         """,
         unsafe_allow_html=True,
     )
-    mevcut_grafikler = [g for g in ICGORU_GRAFIKLERI if os.path.exists(g[0])]
+    mevcut_grafikler = [g for g in ICGORU_GRAFIKLERI if g[0].exists()]
     if not mevcut_grafikler:
-        st.info("Grafik dosyaları bulunamadı. Bu dosyalar projenin kök klasöründe olmalı.")
+        st.info("Grafik dosyaları bulunamadı. Bu dosyalar gorseller/ klasöründe olmalı.")
     else:
         sutunlar = st.columns(2)
         for i, (dosya, baslik, not_) in enumerate(mevcut_grafikler):
@@ -689,7 +702,7 @@ with sekme_icgoru:
                     """,
                     unsafe_allow_html=True,
                 )
-                st.image(dosya, use_container_width=True)
+                st.image(str(dosya), use_container_width=True)
                 st.markdown(
                     f'<div class="insight-note">{not_}</div></div>',
                     unsafe_allow_html=True,

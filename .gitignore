@@ -1,0 +1,14 @@
+# Jupyter otomatik yedekleri
+.ipynb_checkpoints/
+
+# Python önbelleği
+__pycache__/
+*.pyc
+
+# Sanal ortam
+.venv/
+venv/
+
+# İşletim sistemi dosyaları
+.DS_Store
+Thumbs.db

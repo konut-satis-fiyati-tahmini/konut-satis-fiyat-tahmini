@@ -1,7 +1,7 @@
 """Arayüz için gerekli 'arayuz_varsayilanlar.json' dosyasını oluşturur.
 
-Çalıştırmak için (train.csv ve konut_model.py aynı klasörde olmalı):
-    python arayuz_varsayilanlar_olustur.py
+Çalıştırmak için (deponun kök klasöründe):
+    python arayuz/arayuz_varsayilanlar_olustur.py
 
 Dosyada şunlar bulunur:
 - "tipik_ev": Formda sorulmayan özellikler bu değerlerle doldurulur
@@ -16,6 +16,8 @@ Dosyada şunlar bulunur:
 """
 
 import json
+import sys
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -23,12 +25,16 @@ from sklearn.linear_model import Ridge
 from sklearn.metrics import mean_absolute_error, r2_score
 from sklearn.model_selection import train_test_split
 
+ARAYUZ_KLASORU = Path(__file__).resolve().parent
+KOK = ARAYUZ_KLASORU.parent
+sys.path.insert(0, str(KOK / "kaynak"))
+
 from konut_model import YOK_ANLAMINDAKI_KATEGORIK, YOK_ANLAMINDAKI_SAYISAL, hat_olustur
 
 RANDOM_STATE = 42
 EN_IYI_ALPHA = 20  # 6. ve 7. haftada çapraz doğrulamayla seçilen değer
 
-df = pd.read_csv("train.csv")
+df = pd.read_csv(KOK / "veri" / "train.csv")
 df = df.drop(df[df["GrLivArea"] > 4000].index).reset_index(drop=True)  # 7. haftadaki 4 aykırı ev
 X = df.drop(columns="SalePrice")
 y = np.log1p(df["SalePrice"])
@@ -53,7 +59,7 @@ gercek, tahmin = np.expm1(y_test), np.expm1(model.predict(X_test))
 mutlak_hata = np.abs(gercek - tahmin)
 p90_hata = round(float(np.percentile(mutlak_hata, 90)))
 
-with open("arayuz_varsayilanlar.json", "w", encoding="utf-8") as f:
+with open(ARAYUZ_KLASORU / "arayuz_varsayilanlar.json", "w", encoding="utf-8") as f:
     json.dump({
         "tipik_ev": tipik_ev,
         "mahalleler": sorted(X["Neighborhood"].unique().tolist()),
@@ -66,6 +72,6 @@ with open("arayuz_varsayilanlar.json", "w", encoding="utf-8") as f:
         "test_p90": p90_hata,
     }, f, ensure_ascii=False, indent=2)
 
-print("Oluşturuldu: arayuz_varsayilanlar.json")
+print("Oluşturuldu: arayuz/arayuz_varsayilanlar.json")
 print(f"Test MAE: {mean_absolute_error(gercek, tahmin):,.0f} $  |  Test R²: {r2_score(gercek, tahmin):.4f}  |  "
       f"%90 kapsama için hata payı: ±{p90_hata:,.0f} $")
