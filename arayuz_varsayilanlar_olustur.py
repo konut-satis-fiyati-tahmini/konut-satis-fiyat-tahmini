@@ -50,6 +50,8 @@ X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=RANDOM_STATE)
 model = hat_olustur(Ridge(alpha=EN_IYI_ALPHA), X_train).fit(X_train, y_train)
 gercek, tahmin = np.expm1(y_test), np.expm1(model.predict(X_test))
+mutlak_hata = np.abs(gercek - tahmin)
+p90_hata = round(float(np.percentile(mutlak_hata, 90)))
 
 with open("arayuz_varsayilanlar.json", "w", encoding="utf-8") as f:
     json.dump({
@@ -58,7 +60,12 @@ with open("arayuz_varsayilanlar.json", "w", encoding="utf-8") as f:
         "model_adi": f"Ridge Regresyon (alpha={EN_IYI_ALPHA})",
         "test_mae": round(float(mean_absolute_error(gercek, tahmin))),
         "test_r2": round(float(r2_score(gercek, tahmin)), 4),
+        # Not: gerçek fiyat ±test_mae aralığına test evlerinin yalnızca ~%66'sında
+        # düşüyor (MAE ortalama hatadır, aralık değildir). %90 kapsama için bu
+        # eşik (mutlak hatanın 90. yüzdelik dilimi) kullanılmalıdır.
+        "test_p90": p90_hata,
     }, f, ensure_ascii=False, indent=2)
 
 print("Oluşturuldu: arayuz_varsayilanlar.json")
-print(f"Test MAE: {mean_absolute_error(gercek, tahmin):,.0f} $  |  Test R²: {r2_score(gercek, tahmin):.4f}")
+print(f"Test MAE: {mean_absolute_error(gercek, tahmin):,.0f} $  |  Test R²: {r2_score(gercek, tahmin):.4f}  |  "
+      f"%90 kapsama için hata payı: ±{p90_hata:,.0f} $")
