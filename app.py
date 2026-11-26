@@ -35,10 +35,13 @@ KALITE_SECENEKLERI = {"Ex": "Mükemmel", "Gd": "İyi", "TA": "Ortalama", "Fa": "
 # Model İçgörüleri sekmesinde gösterilen, repodaki hazır grafikler
 ICGORU_GRAFIKLERI = [
     ("saleprice_dist.png", "Satış fiyatı dağılımı", "Hedef değişken sağa çarpık; bu yüzden model log-dönüşümle eğitildi."),
-    ("h7_model_karsilastirma.png", "Dört modelin test kümesi karşılaştırması",
-     "Ridge (alpha=20), Gradient Boosting'e yakın başarıyla en dengeli sonucu verdi ve nihai model olarak seçildi."),
+    ("h7_model_karsilastirma.png", "Dört modelin 5 katlı çapraz doğrulama hatası ve eğitim süresi",
+     "Ridge (alpha=20) hem en düşük çapraz doğrulama hatasına (log-RMSE = 0,112) hem de en kısa eğitim süresine "
+     "(0,06 sn) sahip; bu nedenle nihai model olarak seçildi."),
     ("h7_gercek_tahmin.png", "Gerçek değer vs. model tahmini", "Noktalar ideal çizgiye (y=x) yakın dağılıyor; büyük hatalar genelde çok yüksek fiyatlı evlerde."),
-    ("feature_importance.png", "Fiyatı en çok etkileyen özellikler", "Genel kalite, yaşam alanı ve mahalle en güçlü belirleyiciler."),
+    ("h7_ridge_katsayilar.png", "Fiyatı en çok etkileyen özellikler (nihai Ridge modeli)",
+     "Genel kalite (OverallQual) fiyatı en çok yukarı çeken özellik; Crawford ve Stone Brook gibi bazı mahalleler "
+     "de fiyatı artırıyor. Ticari imarlı bölge (MSZoning_C) ve evin yaşı ise fiyatı en çok aşağı çeken etkenler arasında."),
     ("heatmap.png", "Sayısal özellikler arası korelasyon", "GrLivArea, OverallQual ve garaj/bodrum alanları fiyatla en yüksek korelasyona sahip."),
 ]
 
@@ -575,8 +578,9 @@ with sekme_degerleme:
         else:
             fiyat = float(model.predict(ev_satiri_olustur(tipik, girdi))[0])
             hata = ayar["test_mae"]
-            alt_sinir = max(fiyat - hata, 0)
-            ust_sinir = fiyat + hata
+            p90 = ayar["test_p90"]
+            alt_sinir = max(fiyat - p90, 0)
+            ust_sinir = fiyat + p90
             yasam_m2 = (kat1 + kat2) * FT2_M2
             toplam_m2 = (kat1 + kat2 + bodrum) * FT2_M2
             birim_fiyat = fiyat / yasam_m2
@@ -588,7 +592,7 @@ with sekme_degerleme:
                     <div class="val-eyebrow">Tahmini Piyasa Değeri</div>
                     <div class="val-price">{fiyat:,.0f} $</div>
                     <div class="val-range">
-                        Olası Değer Aralığı: <b>{alt_sinir:,.0f} $ – {ust_sinir:,.0f} $</b>
+                        Olası Değer Aralığı (%90 olasılıkla): <b>{alt_sinir:,.0f} $ – {ust_sinir:,.0f} $</b>
                     </div>
                 </div>
                 """,
@@ -609,9 +613,9 @@ with sekme_degerleme:
                         <div class="kpi-sub">{kat1 + kat2 + bodrum:,} sq ft</div>
                     </div>
                     <div class="kpi-box">
-                        <div class="kpi-label">Model Güveni</div>
+                        <div class="kpi-label">Açıklanan Varyans (R²)</div>
                         <div class="kpi-value">%{yuzde}</div>
-                        <div class="kpi-sub">R² = {ayar['test_r2']:.3f}</div>
+                        <div class="kpi-sub">Fiyat değişkenliğinin açıklanan oranı</div>
                     </div>
                 </div>
                 """,
